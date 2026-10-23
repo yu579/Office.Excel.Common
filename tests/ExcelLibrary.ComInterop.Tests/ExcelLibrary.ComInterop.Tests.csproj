@@ -1,12 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net5.0-windows</TargetFramework>
+    <!-- Тестовый проект: net8.0 — единственная среда, где тесты исполняются в CI (Linux);
+         на Windows тот же код проверяет COM-слой через runtime-условные skip. -->
+    <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>disable</ImplicitUsings>
     <Nullable>enable</Nullable>
 
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
+    <!-- В CI-среде (Linux, runtime .NET 8) net5.0 не установлен: roll-forward на новый мажорный -->
+    <RollForward>Major</RollForward>
   </PropertyGroup>
 
   <ItemGroup>

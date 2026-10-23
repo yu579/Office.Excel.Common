@@ -29,6 +29,13 @@
   <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
     <!-- JSON-сериализация для net472 (п.3 ТЗ: загрузка данных из JSON) -->
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <!-- RuntimeBinder для dynamic (late binding COM) в .NET Framework -->
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' != 'net472'">
+    <!-- Реестр Windows (определение пути Excel.exe / битности) в .NET Core/5+ -->
+    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
   </ItemGroup>
 
 </Project>
