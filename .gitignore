@@ -32,9 +32,9 @@ artifacts/
 ScaffoldingReadMe.txt
 
 # NuGet Packages
-*.nupkg
+# *.nupkg
 # NuGet Symbol Packages
-*.snupkg
+# *.snupkg
 
 # dotenv environment variables file
 .env
