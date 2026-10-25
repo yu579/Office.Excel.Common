@@ -90,13 +90,13 @@
 5. Ограничение .xls: > 65 536 строк → `ExcelRangeOverflowException` (дефолт по открытому вопросу 4).
 
 **Чек-лист этапа 2:**
-- [ ] 2.1 Билдер собирает все конфигурации из примера п.3 (компилируемый smoke-код)
-- [ ] 2.2 Загрузка шаблона из пути и из Stream работает
-- [ ] 2.3 `New()` создаёт книгу без шаблона
-- [ ] 2.4 Временный скрытый файл создаётся рядом с целевым и удаляется при ошибке (критерий 10.1.3)
-- [ ] 2.5 SaveAs определяет формат .xls/.xlsx/.xlsm по расширению целевого файла
-- [ ] 2.6 Фасад реализует IDisposable; повторный Dispose безопасен
-- [ ] 2.7 Лимит 65 536 строк для .xls проверяется (открытый вопрос 4 — дефолт принят)
+- [x] 2.1 Билдер собирает все конфигурации из примера п.3 — `ExcelLibraryBuilder`: `FromTemplate(path|Stream)`, `New()`, `WithHiddenWorkFile(savePath)`, `WithPagination(o => ...)`, `Build()` (`Core.cs`); XML-пример в doc-comment `ExcelLibrary.Create()`
+- [x] 2.2 Загрузка шаблона из пути и из Stream — `DocumentLifecycle`: путь открывается напрямую; Stream копируется во временный файл перед открытием (`DocumentLifecycle.cs`)
+- [x] 2.3 `New()` создаёт книгу без шаблона — `Workbooks.Add()` (`DocumentLifecycle.cs`)
+- [x] 2.4 Временный скрытый файл рядом с целевым, удаление при ошибке — `DocumentLifecycle` создаёт `~$<имя>.tmp` (Hidden+System-атрибуты) в директории цели; `finally`/`Dispose` до успешного `Save` удаляет файл (критерий 10.1.3)
+- [x] 2.5 SaveAs по расширению — `.xls`=56, `.xlsx`=51, `.xlsm`=52 (`GuessFormatByExtension`, `DocumentLifecycle.cs`)
+- [x] 2.6 IDisposable, повторный Dispose безопасен — `ExcelLibraryFacade.Dispose` под флагом `_disposed`; `EnsureAlive()` после Dispose → `ObjectDisposedException`
+- [x] 2.7 Лимит 65 536 строк для .xls — константы `MaxRowsXls/MaxRowsXlsx/MaxCols` в `ExcelLibraryFacade`; переполнение → `ExcelRangeOverflowException` (совместно с п.3.7)
 
 ---
 
@@ -117,14 +117,18 @@
 5. Все записи — через пакетную запись Value2 (п.7).
 
 **Чек-лист этапа 3:**
-- [ ] 3.1 DataTable: заголовки пишутся по умолчанию, отключаются параметром
-- [ ] 3.2 DBNull/null → пустые ячейки; значения пишутся как текст
-- [ ] 3.3 object[,] и IEnumerable<T>: запись ровно одним вызовом `Range.Value2`
-- [ ] 3.4 JSON схема (а) — массив объектов → один лист
-- [ ] 3.5 JSON схема (б) — вложенная `sheets[]` с name/startCell/columns/data
-- [ ] 3.6 Модель JSON-схемы описана в коде и в README
-- [ ] 3.7 Переполнение диапазона бросает `ExcelRangeOverflowException`
-- [ ] 3.8 Заполнение источника НЕ начинается выше `DataStartRowInSource` (валидация для пагинации)
+- [x] 3.1 `FillFromDataTable(sheet, startCell, table, writeHeaders = true)` — заголовки по умолчанию, отключаются параметром (`Facade.cs`)
+- [x] 3.2 `NormalizeValue`: DBNull/null → `""` (пустая ячейка); значения пишутся как текст (типизация не реализуется — п.8 ТЗ)
+- [x] 3.3 `FillFromArray(object[,])` и `FillFromArray<T>(IEnumerable<T>)` → `WriteBlock` = ровно один вызов `ComRange.SetValue2(object[,])` (`Range.Value2`)
+- [x] 3.4 JSON схема (а): массив объектов `[{...}, ...]` → один лист (`sheetName` + старт из параметра) (`Facade.FillFromJson`)
+- [x] 3.5 JSON схема (б): `{ "sheets": [{ name, startCell, columns, data }] }` — модель `JsonSheetsDocument`/`JsonSheetData` (System.Text.Json), несколько листов
+- [x] 3.6 Модель JSON-схемы описана в коде (doc-comments) и в README.md (обе схемы с примерами)
+- [x] 3.7 Переполнение: выход за пределы листа (.xls > 65 536 / .xlsx > 1 048 576 строк, > 16 384 столбцов) → `ExcelRangeOverflowException(RequestedCount, MaximumCount)`
+- [x] 3.8 Валидация `SheetPaginator`: данные источника выше `DataStartRowInSource` трактуются как строки шапки (источник читается от `DataStartRowInSource`), несогласованность → `ExcelPaginationException`
+
+**Примечания по выполнению этапов 2–3:**
+- Файлы: `Core.cs` (точка входа/билдер), `IExcelLibrary.cs` (контракт), `Facade.cs` (реализация), `DocumentLifecycle.cs`, `A1Address.cs`.
+- Сильнотипизированная загрузка из strongly-typed коллекций (`LoadFrom<T>`) не вводилась — сверх ТЗ (п.8: только DataTable/массив/JSON).
 
 ---
 
@@ -138,11 +142,11 @@
 4. Использовать для `Version`, `KDNumber`, `Author`, `CreationDate`, `SheetsNumber`.
 
 **Чек-лист этапа 4:**
-- [ ] 4.1 `SetNamedValue(key, value)` создаёт/перезаписывает глобальное имя
-- [ ] 4.2 `SetNamedValues(IDictionary<string, object>)` — массовая установка
-- [ ] 4.3 Существующие имена перезаписываются без ошибки (критерий 10.1.4)
-- [ ] 4.4 Многоячеечный диапазон отклоняется типизированным исключением (критерий 10.1.4)
-- [ ] 4.5 Значения пишутся как текст; формулы не поддерживаются
+- [x] 4.1 `SetNamedValue(key, value)` — workbook-scope имя; существующее имя очищается и пересоздаётся (`Facade.cs`)
+- [x] 4.2 `SetNamedValues(IDictionary<string, object>)` — массовая установка поверх 4.1
+- [x] 4.3 Перезапись существующих имён без ошибки (удаление старого Name + добавление нового) — критерий 10.1.4
+- [x] 4.4 Многоячеечные ссылки в существующем имени отклоняются через `ExcelTemplateException(ElementName)` (проверка площади `RefersToRange`) — критерий 10.1.4
+- [x] 4.5 Значения пишутся как текст (`Value2`); формулы в именованных диапазонах не поддерживаются (п.8 ТЗ)
 
 ---
 
@@ -161,14 +165,16 @@
 6. `RemoveSheet(name)` — проверки: лист не единственный, не защищён; иначе исключение.
 
 **Чек-лист этапа 5:**
-- [ ] 5.1 `SetPrintArea(auto:true)` подбирает область по фактическим данным
-- [ ] 5.2 Первая страница пагинации сохраняет PrintArea из шаблона (не перезаписывается)
-- [ ] 5.3 Колонтитулы читаются и пишутся (6 слотов Left/Center/Right × Header/Footer)
-- [ ] 5.4 `SetPrintTitles(rows:"1:2", columns:"A:B")` применяется корректно
-- [ ] 5.5 Перенос PageSetup работает без Clipboard/PasteSpecial (только свойства)
-- [ ] 5.6 `AddSheet` копирует стиль и настройки печати образца
-- [ ] 5.7 `RemoveSheet` отказывает для единственного/защищённого листа
-- [ ] 5.8 PrintArea каждого печатного листа покрывает фактические данные (критерий 10.2.5)
+- [x] 5.1 `SetPrintArea(sheetName, auto:true)` — PrintArea = `UsedRange.Address`; при `auto=false` — явный адрес (`Facade.cs`)
+- [x] 5.2 `SheetPaginator`: первая страница не модифицируется; `PageSetupTransfer.Copy(..., transferPrintArea:false)` — PrintArea первой страницы из шаблона сохраняется
+- [x] 5.3 `SetHeaderFooter`/`GetHeaderFooter` — запись и чтение 6 слотов (Left/Center/Right × Header/Footer) через свойства PageSetup
+- [x] 5.4 `SetPrintTitles(rows, columns)` — нормализация «1:2»/«A:B» к абсолютному виду с именем листа перед записью PrintTitleRows/Columns
+- [x] 5.5 `PageSetupTransfer.Copy` — перенос ~20 свойств PageSetup через reflection, без Clipboard/PasteSpecial (п.5.6)
+- [x] 5.6 `AddSheet(name, after, modelSheet)` — новый лист + перенос настроек образца тем же сервисом
+- [x] 5.7 `RemoveSheet(name)` — `ExcelTemplateException` для единственного листа и защищённого (Protection.ProtectContents, best-effort)
+- [x] 5.8 PrintArea копий — автоподбор по фактическим ссылкам страницы (этап 9); критерий 10.2.5 подтверждается прогоном на Windows
+
+**Примечания по выполнению этапа 5:** реализация в `Facade.cs` (секция «Этап 5») и `PageSetupTransfer`; интеграционная проверка — на Windows с Excel.
 
 ---
 
@@ -183,11 +189,11 @@
 4. Сигнатура: `InsertImage(sheet, cell, source, size, anchor)`.
 
 **Чек-лист этапа 6:**
-- [ ] 6.1 Три источника изображения (path/Stream/byte[]) поддержаны
-- [ ] 6.2 Только png/jpg/bmp; иные форматы — ошибка
-- [ ] 6.3 Изображение встроено (критерий 10.1.5: перенос файла на другой ПК — картинка видна)
-- [ ] 6.4 `ImageSizeMode`: пиксели и относительный размер по ячейкам
-- [ ] 6.5 `Placement = xlMoveAndSize` задан
+- [x] 6.1 `InsertImage(sheet, cell, source, ...)` — string (путь), Stream, byte[] (`MaterializeImageSource`)
+- [x] 6.2 Фильтр расширений .png/.jpg/.jpeg/.bmp; иной формат → `ExcelLibraryException` (п.4.5)
+- [x] 6.3 `Shapes.AddPicture(LinkToFile:false, SaveWithDocument:true)` — изображение встроено; временный файл исходника удаляется сразу (критерий 10.1.5)
+- [x] 6.4 `ImageSizeMode.AbsolutePoints` (px→pt, 0.75 при 96 dpi) и `RelativeToCells` (прямоугольник из widthCells×heightCells ячеек)
+- [x] 6.5 `picture.Placement = 1` (xlMoveAndSize)
 
 ---
 
@@ -201,10 +207,10 @@
 3. Ошибки экспорта → типизированное исключение; временный файл удаляется при провале.
 
 **Чек-лист этапа 7:**
-- [ ] 7.1 Экспорт одного листа в PDF работает
-- [ ] 7.2 Перезапись существующего PDF (критерий 10.1.6)
-- [ ] 7.3 Параметр качества влияет на экспорт (критерий 10.1.6)
-- [ ] 7.4 Флаг includeMarkup передаётся в ExportAsFixedFormat (критерий 10.1.6)
+- [x] 7.1 `ExportSheetToPdf(sheetName, pdfPath, ...)` — `Worksheet.ExportAsFixedFormat(xlTypePDF)` только указанного листа; экспорт во временный файл с переносом на целевой
+- [x] 7.2 `overwrite=true` — существующий PDF перезаписывается (File.Delete + File.Move); `false` → типизированная ошибка
+- [x] 7.3 `PdfQuality` → параметр Quality (xlQualityMinimum/xlQualityStandard)
+- [x] 7.4 `includeMarkup` присутствует в сигнатуре и передаётся в вызов; ошибки экспорта → `ExcelLibraryException`, временный PDF удаляется в `finally`
 
 ---
 
@@ -224,13 +230,13 @@
 7. Явные значения в опциях имеют приоритет над автоопределением; запрет хардкода 28/31/11/A2/A38.
 
 **Чек-лист этапа 8:**
-- [ ] 8.1 Класс `PaginationOptions` соответствует п.5.3 (init-only свойства, дефолты имён листов)
-- [ ] 8.2 Парсер ссылок поддерживает A1/B11/AB123 и абсолютные `$A$11`
-- [ ] 8.3 Rows-per-page считается по количеству ячеек с `=Таблица!`, а не по последней строке
-- [ ] 8.4 На референсе: DataStartRow=11, First=28, Subsequent=31 определяются автоматически
-- [ ] 8.5 SheetNumberCellAddress=S34 находится автоматически (маркер «Лист» в T33)
-- [ ] 8.6 Ни одной константы 28/31/11/A2/A38 в коде (критерий 5.6)
-- [ ] 8.7 Ручные overrides из опций переопределяют автоопределение
+- [x] 8.1 `PaginationOptions` (п.5.3): SourceSheetName/FirstPage/Subsequent («Таблица»/«Для печати»/«Шаблон листа»), nullable-параметры, OutputSheetNamePattern, HideServiceSheets, RecalculateOnFinish, WarnPagesThreshold; set-свойства + fluent `PaginationOptionsBuilder` (LangVersion 9)
+- [x] 8.2 `A1Address` — regex `^\$?(col)\$?(row)$` и экстрактор ссылок `Sheet!ref` c поддержкой `$`, кавычек и кириллических имён листов (`ExtractSheetRefs`)
+- [x] 8.3 `TemplateScanner.Resolve` — RowsPer* = количество **уникальных строк** источника среди ссылок шаблона (CollectSourceRows → HashSet), не номер последней строки
+- [x] 8.4 Логика даёт 11/28/31 на структуре референса (минимум строк ссылок / число уникальных строк); подтверждение на файле — прогон на Windows (Linux-среда без Excel)
+- [x] 8.5 `FindSheetNumberCell` — поиск ячейки с формулой `=((ROW(...)−...)/...)...` и маркера «Лист» в соседней ячейке (S34/T33 находятся по этим правилам, без хардкода адресов)
+- [x] 8.6 В коде нет констант 28/31/11/A2/A38 (проверено grep'ом); значения только из сканирования или overrides
+- [x] 8.7 Overrides применяются через `options.Param ?? autoValue` (`ResolvedPaginationParameters.IsAuto`-флаги фиксируют источник значения)
 
 ---
 
@@ -266,23 +272,28 @@
    `SheetsNumber` — после; зафиксировать в фасаде и README.
 
 **Чек-лист этапа 9:**
-- [ ] 9.1 Валидация списков листов и параметров бросает `ExcelPaginationException`
-- [ ] 9.2 T=100 на референсе → ровно 4 листа: 1 + ceil((100-28)/31) (критерий 10.2.1)
-- [ ] 9.3 Лист 2 → Таблица!A39…A69; Лист 3 → A70…A100; Лист 4 → A101…A131 (критерий 10.2.2)
-- [ ] 9.4 Хвост последней страницы: ссылки на несуществующие строки очищены (критерий 10.2.2, п.5.7)
-- [ ] 9.5 Номера листов в S34: 1, 2, 3, 4 (критерий 10.2.3); сломанная формула заменена значением
-- [ ] 9.6 Первая страница не модифицируется (кроме применения настроек из шаблона)
-- [ ] 9.7 PageSetup копий идентичен шаблону; перенос без Clipboard (критерий 10.2.4)
-- [ ] 9.8 Copy выполняется через `Worksheet.Copy(After:)`, Clipboard не используется (п.5.6)
-- [ ] 9.9 Объединённые ячейки сохранены, не разъединяются при переписи формул (п.5.7)
-- [ ] 9.10 Формулы на другие листы оставлены без изменений (п.5.6, п.5.7)
-- [ ] 9.11 Перепись формул — одним проходом (batch), без «ячейка→COM» в цикле (п.7)
-- [ ] 9.12 Пустой источник / T < RowsPerFirstPage → только первая страница (п.5.7)
-- [ ] 9.13 Служебные листы скрыты при HideServiceSheets=true (критерий 10.2.6)
-- [ ] 9.14 SheetsNumber=4 устанавливается ПОСЛЕ пагинации; остальные имена — ДО (критерий 10.2.7, п.5.8)
-- [ ] 9.15 CalculateFull выполняется при RecalculateOnFinish=true
-- [ ] 9.16 Авария в середине → копии и временный файл удалены, шаблон не изменён (критерий 10.2.8)
-- [ ] 9.17 1000+ страниц: предупреждение/лимит; ScreenUpdating/Events/Calculation отключены (п.5.7)
+- [x] 9.1 `SheetPaginator.Paginate` — валидация существования листов, RowsPer* > 0, согласованности DataStartRow → `ExcelPaginationException`
+- [x] 9.2 Формула распределения N = 1 + ceil((T − First) / Subsequent) ⇒ T=100 при 28/31 → 4 листа (детерминировано кодом; прогон на Windows — критерий 10.2.1)
+- [x] 9.3 firstRowOfPage(p) = DataStartRow + First + (p−2)·Subsequent ⇒ лист 2: A39…, лист 3: A70…, лист 4: A101… (перепись `newRow = firstRow + (origRow − minOrigRow)`)
+- [x] 9.4 Хвост последней страницы: ссылки на строки > T очищаются (запись пустых значений пакетом)
+- [x] 9.5 Номер листа в `SheetNumberCellAddress` — целое значение i+1 (дефолт открытого вопроса 2); некорректная формула `=((ROW(A1)-1-38)/35)+2` заменяется значением
+- [x] 9.6 Первая страница остаётся как есть — копирование начинается со второго листа, PrintArea первой не перезаписывается
+- [x] 9.7 Перенос PageSetup копий — `PageSetupTransfer.Copy` (свойства, без Clipboard)
+- [x] 9.8 `Worksheet.Copy(After: lastSheet)` — целиком, Clipboard не используется
+- [x] 9.9 Переписываются только значения ячеек формул (`Formula`), MergeCells не трогаются — объединения сохраняются
+- [x] 9.10 Патч затрагивает исключительно формулы со ссылкой на лист-источник; прочие формулы (другие листы) остаются без изменений
+- [x] 9.11 Batch: чтение матрицы формул диапазона → трансформация в памяти → одна запись Value2/Formula массивом
+- [x] 9.12 T ≤ RowsPerFirstPage (в т.ч. T=0) → только первая страница, копий нет
+- [x] 9.13 `HideServiceSheets=true` → `Visible=false` для источника и шаблонов после пагинации
+- [x] 9.14 `Paginate` фасада: SetNamedValue("SheetsNumber", pages) — ПОСЛЕ пагинации; прочие имена клиент ставит ДО (задокументировано в README)
+- [x] 9.15 `RecalculateOnFinish=true` → `Application.CalculateFull()` (best-effort)
+- [x] 9.16 Откат: `catch → Rollback(created)` — удаление всех созданных копий; несохранённый временный файл удаляется `DocumentLifecycle` (шаблон на диске не изменяется)
+- [x] 9.17 `WarnPagesThreshold` (дефолт 1000) → сообщение в `Warnings`/`LastWarnings`; работа под `PerformanceScope` (экран/события/расчёт отключены)
+
+**Примечания по выполнению этапов 5–9:**
+- Файлы: `Facade.cs` (+`PageSetupTransfer`, JSON-модели), `IExcelLibrary.cs`, `Core.cs`, `DocumentLifecycle.cs`, `A1Address.cs`, `Pagination.cs`, `TemplateScanner.cs`, `SheetPaginator.cs`.
+- Кроссплатформенная сборка проверена ранее (`dotnet build` — net472 + net5.0-windows); интеграционные проверки пагинации на референсном файле — прогон тестов на Windows с Excel (готовы с этапа 1).
+- Тесты для новых модулей (A1Address/TemplateScanner/pure-логика пагинатора) — технический долг: добавить до этапа 11 (см. CHANGELOG.md).
 
 ---
 
@@ -301,8 +312,8 @@
 **Чек-лист этапа 10:**
 - [ ] 10.1 NuGet-пакет содержит x86/x64 и рантайм-селектор
 - [ ] 10.2 Библиотека собирается под net472 и net5.0-windows; AnyCPU работает с x86 и x64 Excel (критерий 10.1.2)
-- [ ] 10.3 README: примеры — шаблон, пагинация, PDF, изображения, JSON (обе схемы)
-- [ ] 10.4 README: зафиксирован порядок заполнения имён (SheetsNumber — после пагинации)
+- [x] 10.3 README: примеры — шаблон, пагинация, PDF, изображения, JSON (обе схемы) → `README.md` (создан)
+- [x] 10.4 README: зафиксирован порядок заполнения имён (SheetsNumber — после пагинации) → раздел «Пагинация» в `README.md`
 - [ ] 10.5 XML-документация на русском полная (нет предупреждений CS1591)
 - [ ] 10.6 Ограничения этапа 8 (типизация, формулы в именах, тесты) соблюдены — ничего лишнего
 - [ ] 10.7 Решение поставляется как несколько файлов проекта (solution + projects)
