@@ -124,7 +124,7 @@
 - [x] 3.5 JSON схема (б): `{ "sheets": [{ name, startCell, columns, data }] }` — модель `JsonSheetsDocument`/`JsonSheetData` (System.Text.Json), несколько листов
 - [x] 3.6 Модель JSON-схемы описана в коде (doc-comments) и в README.md (обе схемы с примерами)
 - [x] 3.7 Переполнение: выход за пределы листа (.xls > 65 536 / .xlsx > 1 048 576 строк, > 16 384 столбцов) → `ExcelRangeOverflowException(RequestedCount, MaximumCount)`
-- [x] 3.8 Валидация `SheetPaginator`: данные источника выше `DataStartRowInSource` трактуются как строки шапки (источник читается от `DataStartRowInSource`), несогласованность → `ExcelPaginationException`
+- [x] 3.8 Валидация `SheetPaginator`: данные источника выше `DataStartRowInSource` трактуются как строки шапки (источник читается от `DataStartRowInSource`), несогласованность → `ExcelPaginationException`. **Уточнение (ревизия 2026-10-26):** проверка фактически выполнялась только «на бумаге» — в коде пагинатора был лишь guard `DataStartRow >= 1`. Добавлен `SheetPaginator.EnsureNoDataAboveStart` (п.5.5.1): заполненные ячейки в столбцах ссылок шаблона строго выше строки начала данных ⇒ `ExcelPaginationException`; пустые строки шапки допустимы.
 
 **Примечания по выполнению этапов 2–3:**
 - Файлы: `Core.cs` (точка входа/билдер), `IExcelLibrary.cs` (контракт), `Facade.cs` (реализация), `DocumentLifecycle.cs`, `A1Address.cs`.
@@ -210,7 +210,7 @@
 - [x] 7.1 `ExportSheetToPdf(sheetName, pdfPath, ...)` — `Worksheet.ExportAsFixedFormat(xlTypePDF)` только указанного листа; экспорт во временный файл с переносом на целевой
 - [x] 7.2 `overwrite=true` — существующий PDF перезаписывается (File.Delete + File.Move); `false` → типизированная ошибка
 - [x] 7.3 `PdfQuality` → параметр Quality (xlQualityMinimum/xlQualityStandard)
-- [x] 7.4 `includeMarkup` присутствует в сигнатуре и передаётся в вызов; ошибки экспорта → `ExcelLibraryException`, временный PDF удаляется в `finally`
+- [x] 7.4 `includeMarkup` присутствует в сигнатуре и передаётся в вызов; ошибки экспорта → `ExcelLibraryException`, временный PDF удаляется в `finally`. **Уточнение (ревизия 2026-10-26):** ранее флаг формально присутствовал, но не влиял на вызов (`IgnorePrintAreas` всегда false). Теперь `IgnorePrintAreas = includeMarkup`: true — экспорт всей разметки листа вне зависимости от области печати, false — строго по PrintArea (критерий 10.1.6 «сохраняет разметку»).
 
 ---
 

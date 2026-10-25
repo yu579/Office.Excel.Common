@@ -602,14 +602,18 @@ namespace ExcelLibrary.ComInterop
                 tmp = Path.Combine(Path.GetDirectoryName(full) ?? Path.GetTempPath(),
                     "~EL~pdf" + Guid.NewGuid().ToString("N") + ".pdf");
 
-                dynamic fixedFormatQuality = (int)quality; // xlQualityMinimum=0 / xlQualityStandard=1; High → Standard+FromExt
+                // xlQualityMinimum=0 / xlQualityStandard=1 (High трактуется как Standard —
+                // отдельного значения качества для PDF в Excel нет, критерий 10.1.6)
+                int xlQuality = quality == PdfQuality.Minimum ? 0 : 1;
                 ws.Activate();
                 ((dynamic)ws.Raw).ExportAsFixedFormat(
                     Type: 0,                       // xlTypePDF
                     Filename: tmp,
-                    Quality: (int)quality == 0 ? 0 : 1, // xlQualityMinimum/xlQualityStandard
+                    Quality: xlQuality,
                     IncludeDocProperties: true,
-                    IgnorePrintAreas: !includeMarkup ? false : false, // разметку учитываем всегда; флаг — про printing of markup comments
+                    // includeMarkup=true ⇒ игнорировать заданную область печати и экспортировать
+                    // всю разметку листа; false ⇒ печатать строго по PrintArea (критерий 10.1.6)
+                    IgnorePrintAreas: includeMarkup,
                     From: Type.Missing,
                     To: Type.Missing,
                     OpenAfterPublish: false,

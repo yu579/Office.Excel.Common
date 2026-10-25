@@ -63,9 +63,10 @@ namespace ExcelLibrary.ComInterop
             if (_p.RowsPerFirstPage <= 0 || _p.RowsPerSubsequentPage <= 0)
                 throw new ExcelPaginationException("Параметры RowsPerFirstPage/RowsPerSubsequentPage должны быть > 0.");
 
-            // начало данных не выше DataStartRowInSource (п.5.5.1, чек-лист 3.8)
-            if (_p.DataStartRow < 1)
-                throw new ExcelPaginationException($"DataStartRowInSource должен быть >= 1 (получено {_p.DataStartRow}).");
+            // начало данных не выше DataStartRowInSource (п.5.5.1, чек-лист 3.8):
+            // в источнике не должно быть заполненных ячеек СТРОГО выше строки начала данных
+            // (строка заголовков над DataStartRow допустима — в референсе это шапка «Таблицы»)
+            EnsureNoDataAboveStart(sourceSheet);
 
             // —— 2. Число строк источника T (п.5.5.2) ——
             int t = CountSourceRows(sourceSheet);
@@ -145,6 +146,37 @@ namespace ExcelLibrary.ComInterop
             MaybeRecalculate(book);
             LastPageCount = n;
             return n;
+        }
+
+        /// <summary>
+        /// Валидация п.5.5.1: данные в источнике не должны начинаться выше DataStartRowInSource —
+        /// проверяется, что в столбцах ссылок шаблона нет заполненных ячеек строго выше строки начала
+        /// данных (шапка/заголовки над DataStartRow в других столбцах допустимы).
+        /// </summary>
+        private void EnsureNoDataAboveStart(ComWorksheet sourceSheet)
+        {
+            if (_p.DataStartRow <= 1) return; // начинать выше первой строки невозможно
+
+            var cols = new HashSet<int>(_p.SourceColumnsFirstPage);
+            foreach (var c in _p.SourceColumnsSubsequent) cols.Add(c);
+            if (cols.Count == 0) cols.Add(1);
+
+            int maxCol = cols.Max();
+            string address = $"{A1Address.Format(1, 1)}:{A1Address.IndexToColumnName(maxCol)}{_p.DataStartRow - 1}";
+            object? data = ((dynamic)sourceSheet.Range(address).Raw).Value2;
+
+            int rows = _p.DataStartRow - 1;
+            for (int r = 1; r <= rows; r++)
+                for (int c = 1; c <= maxCol; c++)
+                {
+                    if (!cols.Contains(c)) continue;
+                    object? v = TemplateScanner.GetMatrixCell(data, rows, maxCol, r, c);
+                    if (v != null && !(v is string s && s.Length == 0))
+                        throw new ExcelPaginationException(
+                            $"Источник '{_options.SourceSheetName}' содержит данные в ячейке " +
+                            $"{A1Address.Format(c, r)}, что выше строки начала данных {_p.DataStartRow} " +
+                            "(п.5.5.1: данные должны начинаться не выше DataStartRowInSource).");
+                }
         }
 
         /// <summary>Число заполненных строк источника ниже DataStartRow (по первому непустому столбцу ссылок).</summary>
