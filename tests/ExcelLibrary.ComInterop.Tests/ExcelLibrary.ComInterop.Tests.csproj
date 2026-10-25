@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Тестовый проект: net8.0 — единственная среда, где тесты исполняются в CI (Linux);
+         на Windows тот же код проверяет COM-слой через runtime-условные skip. -->
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <!-- В CI-среде (Linux, runtime .NET 8) net5.0 не установлен: roll-forward на новый мажорный -->
+    <RollForward>Major</RollForward>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0" />
+    <!-- Не добавляем явную ссылку на System.Text.Json: в net8.0 это часть shared framework
+         (assemblyVersion 8.0.0.0). Явный пакет 8.0.5 копировался бы в output и ломал
+         унификацию с библиотекой (net472-сборка ссылается на ту же версию, что и SDK). -->
+    <PackageReference Include="xunit" Version="2.5.3" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\ExcelLibrary.ComInterop\ExcelLibrary.ComInterop.csproj" />
+  </ItemGroup>
+
+</Project>

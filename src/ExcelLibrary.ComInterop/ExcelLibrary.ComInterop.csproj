@@ -1,0 +1,74 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Библиотека работает через Excel COM Interop, поэтому требует Windows -->
+    <TargetFrameworks>net472;net5.0-windows</TargetFrameworks>
+    <LangVersion>9</LangVersion>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Platforms>AnyCPU;x86;x64</Platforms>
+    <Prefer32Bit>false</Prefer32Bit>
+    <UseWindowsForms>false</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>false</ImplicitUsings>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- 10.5: XML-документация на русском полная — CS1591 НЕ глушится,
+         отсутствие doc-comment объявляется ошибкой сборки -->
+    <WarningsAsErrors>CS1591</WarningsAsErrors>
+    <RootNamespace>ExcelLibrary.ComInterop</RootNamespace>
+    <AssemblyName>ExcelLibrary.ComInterop</AssemblyName>
+    <Version>0.1.0</Version>
+    <Description>Библиотека для работы с Excel через COM Interop: шаблоны, пагинация листов, печать, PDF.</Description>
+    <Company>ExcelLibrary</Company>
+    <!-- Публичный API не должен зависеть от типов PIA: используется late binding как fallback -->
+    <EmbedInteropTypes>false</EmbedInteropTypes>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Primary Interop Assembly Excel 15.x (COM-взаимодействие) -->
+    <PackageReference Include="Microsoft.Office.Interop.Excel" Version="15.0.4795.1001" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
+    <!-- JSON-сериализация для net472 (п.3 ТЗ: загрузка данных из JSON).
+         Версия 8.0.0.4 (пакет 8.0.0): в тестах на net8.0 System.Text.Json — часть
+         shared framework (assemblyVersion 8.0.0.0); более высокая версия в библиотеке
+         вызывала бы конфликт унификации и FileNotFoundException на рантайме. -->
+    <PackageReference Include="System.Text.Json" Version="8.0.0" />
+    <!-- RuntimeBinder для dynamic (late binding COM) в .NET Framework -->
+    <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' != 'net472'">
+    <!-- Реестр Windows (определение пути Excel.exe / битности) в .NET Core/5+ -->
+    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
+  </ItemGroup>
+
+  <!-- ====== Этап 10.1: упаковка в NuGet-пакет ======
+       Пакет AnyCPU: библиотека говорит с Excel через COM (IDispatch), поэтому одна
+       и та же сборка работает и с x86-, и с x64-Office из процесса любой битности.
+       Контроль совместимости битностей выполняется рантайм-селектором:
+       ComExcelApplication при старте сверяет Environment.Is64BitProcess с разрядностью
+       установленного Excel (реестр/путъ Excel.exe) и при несовпадении бросает
+       ExcelBitnessMismatchException; отключение — ExcelLibraryBuilder.WithoutBitnessCheck().
+       Отдельные нативных x86/x64 DLL в пакете нет: PIA Microsoft.Office.Interop.Excel
+       сам по себе AnyCPU, а COM-активация не зависит от битности загрузки сборки. -->
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>ExcelLibrary.ComInterop</PackageId>
+    <Title>ExcelLibrary.ComInterop</Title>
+    <Authors>ExcelLibrary</Authors>
+    <PackageTags>excel;com;interop;office;pagination;pdf</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <!-- предупреждения генератора пакета (отсутствие licenseUrl и т.п.) не считаем ошибками -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../docs/TemplateAnalysis.md" Pack="true" PackagePath="/docs/" />
+  </ItemGroup>
+
+</Project>
