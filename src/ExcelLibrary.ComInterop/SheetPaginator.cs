@@ -71,7 +71,9 @@ namespace ExcelLibrary.ComInterop
             int t = CountSourceRows(sourceSheet);
 
             // —— 3. Распределение (п.5.5.3, пограничные случаи п.5.7) ——
-            if (t <= _p.RowsPerFirstPage)
+            int n = ComputePageCount(t, _p.RowsPerFirstPage, _p.RowsPerSubsequentPage);
+
+            if (n == 1)
             {
                 // только первая страница, копий нет (пустой источник — тоже)
                 FinalizeFirstPage(firstSheet);
@@ -81,9 +83,7 @@ namespace ExcelLibrary.ComInterop
                 return 1;
             }
 
-            int remaining = t - _p.RowsPerFirstPage;
-            int pagesSubsequent = (remaining + _p.RowsPerSubsequentPage - 1) / _p.RowsPerSubsequentPage;
-            int n = 1 + pagesSubsequent;
+            int pagesSubsequent = n - 1;
 
             if (_options.WarnPagesThreshold > 0 && n >= _options.WarnPagesThreshold)
                 Warnings.Add($"Пагинация создаст {n} страниц (порог предупреждения {_options.WarnPagesThreshold}); это может занять длительное время.");
@@ -241,6 +241,24 @@ namespace ExcelLibrary.ComInterop
 
             ((dynamic)used.Raw).Formula = result;
             _ = baseRow; _ = baseCol; // базовые координаты не менялись (адреса относительные внутри массива)
+        }
+
+        /// <summary>
+        /// Число страниц N по формуле п.5.5.3: T ≤ First ⇒ 1, иначе N = 1 + ceil((T − First) / Subsequent).
+        /// Чистая функция без COM — используется <see cref="Paginate"/> и доступна для unit-тестов
+        /// (в т.ч. критерий 10.2.1: T=100 при 28/31 ⇒ 4).
+        /// </summary>
+        /// <param name="totalRows">T — число заполненных строк источника.</param>
+        /// <param name="rowsPerFirstPage">Строк на первой странице (должно быть &gt; 0).</param>
+        /// <param name="rowsPerSubsequentPage">Строк на каждой последующей странице (должно быть &gt; 0).</param>
+        /// <returns>Число страниц N ≥ 1.</returns>
+        public static int ComputePageCount(int totalRows, int rowsPerFirstPage, int rowsPerSubsequentPage)
+        {
+            if (rowsPerFirstPage <= 0 || rowsPerSubsequentPage <= 0)
+                throw new ExcelPaginationException("Параметры RowsPerFirstPage/RowsPerSubsequentPage должны быть > 0.");
+            if (totalRows <= rowsPerFirstPage) return 1; // пустой источник или умещается на первой странице
+            int remaining = totalRows - rowsPerFirstPage;
+            return 1 + (remaining + rowsPerSubsequentPage - 1) / rowsPerSubsequentPage;
         }
 
         /// <summary>Номер строки источника, на которую указывает первая ссылка страницы p (п.5.5.6.3).</summary>

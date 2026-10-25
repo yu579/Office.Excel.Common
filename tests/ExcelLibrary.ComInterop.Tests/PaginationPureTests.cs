@@ -215,6 +215,54 @@ namespace ExcelLibrary.ComInterop.Tests
         }
 
         [Fact]
+        public void ComputePageCount_Criterion10_2_1_RefT100_Gives4Pages()
+        {
+            // Критерий 10.2.1 в чистом виде: T=100, первая страница 28, последующие 31 ⇒ N = 1+ceil(72/31) = 4.
+            Assert.Equal(4, SheetPaginator.ComputePageCount(totalRows: 100, rowsPerFirstPage: 28, rowsPerSubsequentPage: 31));
+        }
+
+        [Theory]
+        [InlineData(0, 28, 31, 1)]   // пустой источник — только первая страница (п.5.7)
+        [InlineData(28, 28, 31, 1)]  // ровно умещается на первой
+        [InlineData(29, 28, 31, 2)]  // одна строка на вторую
+        [InlineData(59, 28, 31, 2)]  // граница второй страницы
+        [InlineData(60, 28, 31, 3)]  // сразу за границей
+        [InlineData(100, 28, 31, 4)] // референс ТЗ
+        [InlineData(131, 28, 31, 5)] // хвост ровно заполняет 5-ю страницу (28+4*31=152 ≥ 131)
+        [InlineData(132, 28, 31, 5)] // 1+ceil(104/31)=5 (104 ≤ 4*31=124)
+        [InlineData(153, 28, 31, 6)] // первая строка за ёмкостью 5 страниц ⇒ 6
+        public void ComputePageCount_Boundaries(int total, int first, int subsequent, int expected)
+        {
+            Assert.Equal(expected, SheetPaginator.ComputePageCount(total, first, subsequent));
+        }
+
+        [Fact]
+        public void ComputePageCount_MonotonicAndCoversAllRows()
+        {
+            // Инварианты: N не убывает по T; последние строки попадают на страницу N:
+            // First + (N-1)*Subsequent >= T (хвост не «теряется»).
+            int prev = 0;
+            for (int t = 0; t <= 300; t++)
+            {
+                int n = SheetPaginator.ComputePageCount(t, 28, 31);
+                Assert.True(n >= prev, $"N убывает при T={t}");
+                prev = n;
+                if (t > 28)
+                    Assert.True(28 + (n - 1) * 31 >= t, $"Строки источника не помещаются: T={t}, N={n}");
+            }
+        }
+
+        [Theory]
+        [InlineData(10, 0, 31)]
+        [InlineData(10, 28, 0)]
+        [InlineData(10, -1, 31)]
+        public void ComputePageCount_InvalidParams_Throws(int total, int first, int subsequent)
+        {
+            Assert.Throws<ExcelPaginationException>(
+                () => SheetPaginator.ComputePageCount(total, first, subsequent));
+        }
+
+        [Fact]
         public void Paginator_ReferenceGeometry_PageOffsets()
         {
             // Геометрия референса 338535-00-90-000 ПЭ3: старт строки источника = 39,
