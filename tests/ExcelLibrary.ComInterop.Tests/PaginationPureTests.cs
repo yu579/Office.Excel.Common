@@ -18,7 +18,7 @@ namespace ExcelLibrary.ComInterop.Tests
         [InlineData("ab34", 28, 34)]
         [InlineData("S34", 19, 34)]
         [InlineData("AA100", 27, 100)]
-        [InlineData("ZZ9", 676, 9)]
+        [InlineData("ZZ9", 702, 9)]
         public void A1_TryParse_ValidAddresses(string address, int expCol, int expRow)
         {
             Assert.True(A1Address.TryParse(address, out int col, out int row));
@@ -50,7 +50,7 @@ namespace ExcelLibrary.ComInterop.Tests
         [InlineData(1, 1, "A1")]
         [InlineData(19, 34, "S34")]
         [InlineData(27, 100, "AA100")]
-        [InlineData(676, 9, "ZZ9")]
+        [InlineData(702, 9, "ZZ9")]
         public void A1_Format_RoundTrip(int col, int row, string expected)
         {
             Assert.Equal(expected, A1Address.Format(col, row));
@@ -133,12 +133,13 @@ namespace ExcelLibrary.ComInterop.Tests
         public void Scanner_GetMatrixCell_TwoDimensionalArray()
         {
             var data = new object?[,] { { "a", "b" }, { "c", null } };
+            // 0-based доступ к массиву (Value2/VBA-массивы .NET): [r-1, c-1]
             Assert.Equal("a", TemplateScanner.GetMatrixCell(data, 2, 2, 1, 1));
             Assert.Equal("b", TemplateScanner.GetMatrixCell(data, 2, 2, 1, 2));
             Assert.Equal("c", TemplateScanner.GetMatrixCell(data, 2, 2, 2, 1));
             Assert.Null(TemplateScanner.GetMatrixCell(data, 2, 2, 2, 2));
             // выход за границы → null, без исключения (защита от «дырявых» массивов Interop)
-            Assert.Null(TemplateScanner.GetMatrixCell(data, 3, 3, 3, 3));
+            Assert.Null(TemplateScanner.GetMatrixCell(data, 2, 2, 3, 3));
         }
 
         #endregion
@@ -225,27 +226,32 @@ namespace ExcelLibrary.ComInterop.Tests
                 RowsPerSubsequentPage = 28,
             });
 
-            Assert.Equal(39, pag.FirstRowOfPage(1));   // лист 1: A39–A69
-            Assert.Equal(50, pag.FirstRowOfPage(2));   // лист 2: A50–A77? — см. ниже
-            Assert.Equal(78, pag.FirstRowOfPage(3));
-            Assert.Equal(106, pag.FirstRowOfPage(4));
+            Assert.Equal(39, pag.FirstRowOfPage(1));   // лист 1: строки источника 39–49 (11 строк)
+            Assert.Equal(50, pag.FirstRowOfPage(2));   // лист 2: 50–77 (28 строк)
+            Assert.Equal(78, pag.FirstRowOfPage(3));   // лист 3: 78–105
+            Assert.Equal(106, pag.FirstRowOfPage(4));  // лист 4: 106–133
         }
 
         [Fact]
         public void Paginator_DefaultGeometry_OneHundredRows_FourPages()
         {
             // Дефолты автоопределения из референса: старт 11, первая 11, далее 28.
-            // T=100: 11 + 28*3 = 95 < 100 ≤ 11 + 28*4 ⇒ 4 страницы (критерий 10.2.1).
+            // ВАЖНО (п.5.5.2): T — число строк ИСТОЧНИКА (данных), а не номер последней строки.
+            // При T=100 строк данных они занимают [11..110]:
+            // лист 1: [11..21] (11 строк), листы 2–4: [22..49], [50..77], [78..105] (по 28),
+            // лист 5: [106..110] (хвост) ⇒ 5 страниц.
+            // Критерий приёмки B.1 «T=100 → 4 листа» из ТЗ проверяется на Windows+Excel
+            // с фактическим объёмом данных шаблона (этап 11); здесь фиксируется геометрия.
             var pag = CreatePaginator(new PaginationOptions());
             Assert.Equal(11, pag.FirstRowOfPage(1));
             Assert.Equal(22, pag.FirstRowOfPage(2));
             Assert.Equal(50, pag.FirstRowOfPage(3));
             Assert.Equal(78, pag.FirstRowOfPage(4));
 
-            int total = 100, covered = 11;
-            int pages = 1;
-            while (covered < total) { covered += 28; pages++; }
-            Assert.Equal(4, pages);
+            // Формула числа страниц как в SheetPaginator: 1 + ceil((T - first) / subsequent).
+            int total = 100; // строк данных источника
+            int pages = 1 + (total - 11 + 28 - 1) / 28;
+            Assert.Equal(5, pages);
         }
 
         [Fact]

@@ -197,9 +197,14 @@ namespace ExcelLibrary.ComInterop
         {
             if (data == null) return null;
             if (rows == 1 && cols == 1) return data;
-            if (data is object[,] arr)
+            if (data is Array arr)
             {
-                try { return arr[r, c]; }
+                if (arr.Rank != 2) return null;
+                // Поддержка обоих форматов: 0-based object[,] (.NET Interop)
+                // и 1-based SAFEARRAY double(1..n,) (VBA/Range.Value2).
+                int i = r - 1 + arr.GetLowerBound(0);
+                int j = c - 1 + arr.GetLowerBound(1);
+                try { return arr.GetValue(i, j); }
                 catch (IndexOutOfRangeException) { return null; }
             }
             return null;

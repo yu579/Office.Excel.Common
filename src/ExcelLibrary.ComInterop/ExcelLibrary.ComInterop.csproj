@@ -27,8 +27,11 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == 'net472'">
-    <!-- JSON-сериализация для net472 (п.3 ТЗ: загрузка данных из JSON) -->
-    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <!-- JSON-сериализация для net472 (п.3 ТЗ: загрузка данных из JSON).
+         Версия 8.0.0.4 (пакет 8.0.0): в тестах на net8.0 System.Text.Json — часть
+         shared framework (assemblyVersion 8.0.0.0); более высокая версия в библиотеке
+         вызывала бы конфликт унификации и FileNotFoundException на рантайме. -->
+    <PackageReference Include="System.Text.Json" Version="8.0.0" />
     <!-- RuntimeBinder для dynamic (late binding COM) в .NET Framework -->
     <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
   </ItemGroup>

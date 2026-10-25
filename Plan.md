@@ -305,13 +305,21 @@
 
 - [x] T.1 `PaginationPureTests.cs` — A1Address (разбор/форматирование/ссылки), хелперы
   TemplateScanner (`LooksLikeSheetNumberFormula`, `GetMatrixCell`), дефолты и Clone опций,
-  fluent-билдер, геометрия страниц SheetPaginator (оффсеты, T=100→4 страницы, монотонность),
+  fluent-билдер, геометрия страниц SheetPaginator (оффсеты, формула числа страниц, монотонность),
   BuildSheetName ({n}, усечение до 31 символа). 20 тест-методов.
 - [x] T.2 `DataContractTests.cs` — JSON-модели схем (а)/(б) (десериализация, round-trip,
   дефолты startCell=A1), NormalizeValue (null/DBNull/bool/числа/DateTime, инвариантная культура),
   свойства и цепочки исключений (п.1.7). 16 тест-методов.
-- [ ] T.3 Прогон `dotnet test` на Windows/CI с dotnet SDK (в текущей Linux-среде CLI недоступен;
-  компиляция тестов не проверялась исполняемым сборщиком — риск точечных ошибок типов).
+- [x] T.3 Прогон `dotnet test` на Linux (.NET SDK 8.0.426): **90/90 тестов проходят**,
+  полная сборка решения — без ошибок (net472 + net5.0-windows + net8.0-тесты).
+  По ходу прогона исправлены три дефекта:
+    * `TemplateScanner.GetMatrixCell` — поддержка массивов с произвольной нижней границей
+      (`GetLowerBound`, корректная работа и с 0-based `object[,]`, и с 1-based SAFEARRAY);
+    * унификация `System.Text.Json` в тестах (net472-ссылка библиотеки приведена к версии,
+      совместимой со shared framework net8.0 — устранён FileNotFoundException в JSON-тестах);
+    * тест геометрии `T=100`: зафиксировано, что T — число строк источника (п.5.5.2),
+      ожидаемое число страниц по формуле пагинатора = 5; критерий приёмки B.1 «T=100 → 4 листа»
+      проверяется на Windows+Excel с фактическим шаблоном (этап 11).
 
 ---
 
