@@ -4,6 +4,29 @@
 
 ## [Невыпущено] — 2026-10-25
 
+### Добавлено (Этап 10: NuGet-упаковка и поставка)
+- **NuGet-пакет `ExcelLibrary.ComInterop` 0.1.0** (`dotnet pack`, 10.1): `lib/net472` и
+  `lib/net5.0-windows7.0` (DLL + XML-документация), README и docs/TemplateAnalysis внутри
+  пакета, symbols-пакет (.snupkg). Трактовка «x86/x64»: пакет AnyCPU — COM IDispatch работает
+  с Office любой битности; функцию рантайм-селектора выполняет проверка битности процесса vs
+  Excel (`ExcelBitnessMismatchException`, отключение — `WithoutBitnessCheck()`); обоснование —
+  комментарий в csproj. Сборка Release для обоих TFM подтверждена на Linux (0 ошибок);
+  runtime-проверка AnyCPU с x86/x64 Excel — этап 11 (A.2).
+- README: раздел «Установка NuGet-пакета» (pack + установка из локального источника).
+
+### Исправлено (Этап 10.5: качество XML-документации)
+- Убрано глушение CS1591: `<NoWarn>` заменён на `<WarningsAsErrors>CS1591</WarningsAsErrors>` —
+  отсутствие doc-комментария у публичного члена теперь ошибка сборки (весь публичный API уже
+  задокументирован на русском; проверено сканированием и контрольной сборкой).
+- CS1570: исправлен битый XML-комментарий `IExcelLibrary.SetNamedValue` (спецсимволы в summary).
+- CS1574: неразрешённый `cref="IExcelLibrary.Dispose"` → `IDisposable.Dispose` (`Core.cs`).
+
+### Проверено (Этап 10.6/10.7)
+- Ограничения ТЗ п.8 соблюдены: типизация ячеек не реализована, формулы в именованных
+  диапазонах отклоняются, интеграционные COM-тесты не добавлялись — ничего сверх ТЗ.
+- Состав поставки: solution + 2 проекта + Directory.Build.props + NuGet.config.
+- Регрессия: `dotnet test -c Release` — 90/90 проходят.
+
 ### Исправлено (прогон `dotnet test` на Linux, .NET SDK 8.0.426 — 90/90 тестов проходят)
 - `TemplateScanner.GetMatrixCell`: поддержка двумерных массивов с произвольной нижней
   границей (`GetLowerBound`) — корректный обход как 0-based `object[,]` (.NET Interop),

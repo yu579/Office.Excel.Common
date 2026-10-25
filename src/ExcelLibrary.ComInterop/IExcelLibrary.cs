@@ -41,9 +41,11 @@ namespace ExcelLibrary.ComInterop
 
         // —— Именованные диапазоны (Этап 4, п.4.2) ——
 
-        /// <summary>Создать/перезаписать глобальное одноячеечное имя.</summary>
-        /// <param name="key">Имя (Version, KDNumber, …).</param>
-        /// <param name="value">Значение (пишется как текст).</summary>
+        /// <summary>
+        /// Создать/перезаписать глобальное одноячеечное имя.
+        /// </summary>
+        /// <param name="key">Имя (Version, KDNumber и т.п.).</param>
+        /// <param name="value">Значение (пишется как текст).</param>
         void SetNamedValue(string key, object value);
 
         /// <summary>Массовая установка глобальных имён.</summary>

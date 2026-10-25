@@ -257,7 +257,7 @@ namespace ExcelLibrary.ComInterop
         /// <summary>
         /// Собирает экземпляр библиотеки: запускает Excel, открывает шаблон/новую книгу,
         /// подготавливает рабочий (скрытый временный) файл. Владелец результата — вызывающий код:
-        /// <see cref="IExcelLibrary.Dispose"/> освобождает и документ, и COM-приложение.
+        /// <see cref="IDisposable.Dispose"/> освобождает и документ, и COM-приложение.
         /// </summary>
         /// <returns><see cref="IExcelLibrary"/>, реализующий IDisposable.</returns>
         /// <exception cref="InvalidOperationException">Источник документа не выбран (ни FromTemplate, ни New).</exception>

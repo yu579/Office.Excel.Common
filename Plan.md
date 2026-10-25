@@ -336,13 +336,13 @@
    формулы в именованных диапазонах НЕ поддерживаются (п.8).
 
 **Чек-лист этапа 10:**
-- [ ] 10.1 NuGet-пакет содержит x86/x64 и рантайм-селектор
-- [ ] 10.2 Библиотека собирается под net472 и net5.0-windows; AnyCPU работает с x86 и x64 Excel (критерий 10.1.2)
+- [x] 10.1 NuGet-пакет: `dotnet pack` собран (`ExcelLibrary.ComInterop.0.1.0.nupkg` + `.snupkg`); состав проверен — `lib/net472/`, `lib/net5.0-windows7.0/` (DLL+XML), README и docs внутри пакета. Уточнение трактовки «x86/x64»: библиотека AnyCPU и говорит с Excel через COM IDispatch, отдельные нативные x86/x64 DLL не требуются; роль «рантайм-селектора» выполняет проверка битности процесса vs Excel в `ComExcelApplication` (`ExcelBitnessMismatchException`, отключение — `WithoutBitnessCheck()`). Обоснование — комментарий в `ExcelLibrary.ComInterop.csproj`
+- [ ] 10.2 Библиотека собирается под net472 и net5.0-windows — **подтверждено на Linux** (`dotnet build -c Release`: 0 ошибок для обоих TFM); рантайм AnyCPU с x86 и x64 Excel проверяется только на Windows (критерий 10.1.2 → этап 11, A.2)
 - [x] 10.3 README: примеры — шаблон, пагинация, PDF, изображения, JSON (обе схемы) → `README.md` (создан)
 - [x] 10.4 README: зафиксирован порядок заполнения имён (SheetsNumber — после пагинации) → раздел «Пагинация» в `README.md`
-- [ ] 10.5 XML-документация на русском полная (нет предупреждений CS1591)
-- [ ] 10.6 Ограничения этапа 8 (типизация, формулы в именах, тесты) соблюдены — ничего лишнего
-- [ ] 10.7 Решение поставляется как несколько файлов проекта (solution + projects)
+- [x] 10.5 XML-документация на русском полная: `<NoWarn>CS1591</NoWarn>` удалён из csproj, вместо него `<WarningsAsErrors>CS1591</WarningsAsErrors>` — отсутствие doc-комментария теперь ошибка сборки. Попутно исправлены CS1570 (битый XML в `IExcelLibrary.SetNamedValue` — `…` и em-dash в summary) и CS1574 (неразрешённый cref `IExcelLibrary.Dispose` → `IDisposable.Dispose` в `Core.cs`). Контрольный `dotnet build --no-incremental`: CS1591/CS1570/CS1574 — 0
+- [x] 10.6 Ограничения этапа 8 соблюдены: типизация ячеек не реализована (значения пишутся как есть/текст), формулы в именованных диапазонах отклоняются (`ExcelTemplateException`, этап 4), интеграционные тесты, требующие Excel, не добавлялись — unit-тесты только чистых модулей; ничего сверх ТЗ не обнаружено
+- [x] 10.7 Решение поставляется как solution + проекты: `ExcelLibrary.sln`, `src/ExcelLibrary.ComInterop`, `tests/ExcelLibrary.ComInterop.Tests`, `Directory.Build.props`, `NuGet.config`
 
 ---
 

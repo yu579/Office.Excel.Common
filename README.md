@@ -168,3 +168,13 @@ excel.Save();
 dotnet build ExcelLibrary.sln          # net472 + net5.0-windows
 dotnet test  tests/ExcelLibrary.ComInterop.Tests   # Windows-only интеграционные пропускаются graceful
 ```
+
+## Установка NuGet-пакета (этап 10)
+
+```powershell
+dotnet pack src/ExcelLibrary.ComInterop -c Release   # -> bin/Release/ExcelLibrary.ComInterop.<версия>.nupkg (+ .snupkg)
+# установка из локальной папки:
+dotnet add <ваш проект> package ExcelLibrary.ComInterop --source src/ExcelLibrary.ComInterop/bin/Release --version 0.1.0
+```
+
+Пакет AnyCPU (`lib/net472`, `lib/net5.0-windows7.0`): работа с x86- и x64-Office обеспечивается COM IDispatch; при несовпадении битности процесса и установленного Excel библиотека бросает `ExcelBitnessMismatchException` (отключение проверки — `WithoutBitnessCheck()`).

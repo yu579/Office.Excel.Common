@@ -11,7 +11,9 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>false</ImplicitUsings>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- 10.5: XML-документация на русском полная — CS1591 НЕ глушится,
+         отсутствие doc-comment объявляется ошибкой сборки -->
+    <WarningsAsErrors>CS1591</WarningsAsErrors>
     <RootNamespace>ExcelLibrary.ComInterop</RootNamespace>
     <AssemblyName>ExcelLibrary.ComInterop</AssemblyName>
     <Version>0.1.0</Version>
@@ -39,6 +41,34 @@
   <ItemGroup Condition="'$(TargetFramework)' != 'net472'">
     <!-- Реестр Windows (определение пути Excel.exe / битности) в .NET Core/5+ -->
     <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
+  </ItemGroup>
+
+  <!-- ====== Этап 10.1: упаковка в NuGet-пакет ======
+       Пакет AnyCPU: библиотека говорит с Excel через COM (IDispatch), поэтому одна
+       и та же сборка работает и с x86-, и с x64-Office из процесса любой битности.
+       Контроль совместимости битностей выполняется рантайм-селектором:
+       ComExcelApplication при старте сверяет Environment.Is64BitProcess с разрядностью
+       установленного Excel (реестр/путъ Excel.exe) и при несовпадении бросает
+       ExcelBitnessMismatchException; отключение — ExcelLibraryBuilder.WithoutBitnessCheck().
+       Отдельные нативных x86/x64 DLL в пакете нет: PIA Microsoft.Office.Interop.Excel
+       сам по себе AnyCPU, а COM-активация не зависит от битности загрузки сборки. -->
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <PackageId>ExcelLibrary.ComInterop</PackageId>
+    <Title>ExcelLibrary.ComInterop</Title>
+    <Authors>ExcelLibrary</Authors>
+    <PackageTags>excel;com;interop;office;pagination;pdf</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+    <!-- предупреждения генератора пакета (отсутствие licenseUrl и т.п.) не считаем ошибками -->
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="../../README.md" Pack="true" PackagePath="/" />
+    <None Include="../../docs/TemplateAnalysis.md" Pack="true" PackagePath="/docs/" />
   </ItemGroup>
 
 </Project>
