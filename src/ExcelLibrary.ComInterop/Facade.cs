@@ -212,7 +212,7 @@ namespace ExcelLibrary.ComInterop
         }
 
         /// <summary>DBNull/null → null (пустая ячейка); всё остальное приводится к строке (текст, п.4.1).</summary>
-        private static object? NormalizeValue(object? value)
+        internal static object? NormalizeValue(object? value)
         {
             if (value == null || value == DBNull.Value) return null;
             if (value is string s) return s;

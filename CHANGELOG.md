@@ -5,6 +5,17 @@
 ## [Невыпущено] — 2026-10-25
 
 ### Добавлено
+- **Unit-тесты чистых модулей (закрытие технического долга, раздел «Тесты» Plan.md)**:
+  - `tests/ExcelLibrary.ComInterop.Tests/PaginationPureTests.cs` (~20 тестов): парсер/форматтер
+    `A1Address` (абсолютные `$A$11`, кириллические имена в кавычках), хелперы `TemplateScanner`
+    (диапазон строк, поиск границ блока), геометрия `SheetPaginator.CalculateFull` на параметрах
+    референса (T=100 → 4 страницы, перенос S34→стр.2, строки 1–8 не переносятся),
+    `PaginationOptions`/`Clone`/билдер, `BuildSheetName` (порядок имён: SheetsNumber после пагинации);
+  - `tests/ExcelLibrary.ComInterop.Tests/DataContractTests.cs` (~16 тестов): сериализация/десериализация
+    JSON-схем (а) и (б) из README, `NormalizeValue` (null/пустая/число/дата/булево),
+    иерархия исключений (`ExcelLibraryException` + наследники);
+  - `Facade.NormalizeValue`: `private` → `internal` (тесты доступны через существующий
+    `InternalsVisibleTo`), поведение не изменено.
 - **Этапы 2–9 ядра библиотеки** (`src/ExcelLibrary.ComInterop/`):
   - `Core.cs` — точка входа `ExcelLibrary.Create()` и fluent-билдер `ExcelLibraryBuilder`
     (`FromTemplate(path|Stream)`, `New()`, `WithHiddenWorkFile`, `WithPagination`, `Build()`);
@@ -36,8 +47,9 @@
 - Интеграционная проверка на реальном Excel (пагинация референса, PDF, изображения) требует
   Windows + MS Office; в текущей Linux-среде подтверждены сборка (net472 + net5.0-windows)
   и кроссплатформенные тесты COM-слоя (этап 1).
-- Unit-тесты для новых модулей (A1Address / TemplateScanner / чистая логика SheetPaginator)
-  — технический долг, добавить до этапа 11.
+- Unit-тесты для новых модулей (A1Address / TemplateScanner / чистая логика SheetPaginator) —
+  добавлены (PaginationPureTests.cs, DataContractTests.cs); прогон `dotnet test` в этой среде
+  невозможен (нет dotnet CLI) — проверить на Windows/CI (см. Plan.md, раздел «Тесты», T.3).
 - Этапы 10 (NuGet x86/x64 + рантайм-селектор) и 11 (финальная приёмка) — не выполнены.
 
 ## [Этап 1] — 2026-10-23

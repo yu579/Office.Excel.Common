@@ -293,7 +293,25 @@
 **Примечания по выполнению этапов 5–9:**
 - Файлы: `Facade.cs` (+`PageSetupTransfer`, JSON-модели), `IExcelLibrary.cs`, `Core.cs`, `DocumentLifecycle.cs`, `A1Address.cs`, `Pagination.cs`, `TemplateScanner.cs`, `SheetPaginator.cs`.
 - Кроссплатформенная сборка проверена ранее (`dotnet build` — net472 + net5.0-windows); интеграционные проверки пагинации на референсном файле — прогон тестов на Windows с Excel (готовы с этапа 1).
-- Тесты для новых модулей (A1Address/TemplateScanner/pure-логика пагинатора) — технический долг: добавить до этапа 11 (см. CHANGELOG.md).
+- Тесты для новых модулей (A1Address/TemplateScanner/pure-логика пагинатора) — **закрыто**:
+  `tests/.../PaginationPureTests.cs` (20 тест-методов) и `tests/.../DataContractTests.cs`
+  (16 тест-методов), кроссплатформенные; прогон — на Windows/CI с dotnet SDK (в текущей
+  Linux-среде CLI недоступен). Для тестов `NormalizeValue` в фасаде изменён `private → internal`
+  (поведение не менялось, доступ открыт через существующий `InternalsVisibleTo`).
+
+---
+
+## Тесты (вне нумерации этапов; п.8 ТЗ разрешает unit-тесты чистых модулей)
+
+- [x] T.1 `PaginationPureTests.cs` — A1Address (разбор/форматирование/ссылки), хелперы
+  TemplateScanner (`LooksLikeSheetNumberFormula`, `GetMatrixCell`), дефолты и Clone опций,
+  fluent-билдер, геометрия страниц SheetPaginator (оффсеты, T=100→4 страницы, монотонность),
+  BuildSheetName ({n}, усечение до 31 символа). 20 тест-методов.
+- [x] T.2 `DataContractTests.cs` — JSON-модели схем (а)/(б) (десериализация, round-trip,
+  дефолты startCell=A1), NormalizeValue (null/DBNull/bool/числа/DateTime, инвариантная культура),
+  свойства и цепочки исключений (п.1.7). 16 тест-методов.
+- [ ] T.3 Прогон `dotnet test` на Windows/CI с dotnet SDK (в текущей Linux-среде CLI недоступен;
+  компиляция тестов не проверялась исполняемым сборщиком — риск точечных ошибок типов).
 
 ---
 
